@@ -1,1 +1,1 @@
-# -home-kite-Desktop-usr-lib-chatgpt-resources-server.py
+This is my first AI project
