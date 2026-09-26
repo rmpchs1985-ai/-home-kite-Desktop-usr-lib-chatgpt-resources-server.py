@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>J.A.R.V.I.S. / ARC AI Command Center</title>
+    <style>
+        :root {
+            --stark-cyan: #00f0ff;
+            --stark-gold: #ffb700;
+            --stark-red: #ff2a2a;
+            --stark-green: #00ff88;
+            --bg-dark: #050811;
+            --panel-bg: rgba(10, 20, 36, 0.88);
+            --border-color: rgba(0, 240, 255, 0.3);
+            --font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            background-color: var(--bg-dark);
+            color: #e0f7ff;
+            font-family: var(--font-family);
+            background-image: radial-gradient(circle at 50% 50%, #0a1b36 0%, #020408 100%);
+            min-height: 100vh;
+        }
+
+        .app-shell {
+            display: flex;
+            flex-direction: column;
+            max-width: 1450px;
+            margin: 0 auto;
+            padding: 20px;
+            gap: 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 12px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .brand {
+            font-size: 1.3rem;
+            letter-spacing: 2px;
+            color: var(--stark-cyan);
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .brand span { color: var(--stark-gold); margin-right: 6px; }
+
+        nav button, #sound-toggle, .hud-btn, .appliance-btn, .voice, form button {
+            background: rgba(0, 240, 255, 0.1);
+            border: 1px solid var(--stark-cyan);
+            color: var(--stark-cyan);
+            padding: 8px 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-weight: 600;
+            transition: all 0.25s ease;
+        }
+
+        nav button.active, nav button:hover, #sound-toggle:hover, .hud-btn:hover, .appliance-btn:hover {
+            background: var(--stark-cyan);
+            color: #000;
+            box-shadow: 0 0 12px var(--stark-cyan);
+        }
+
+        .voice-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #voice-select {
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid var(--stark-cyan);
+            color: #fff;
+            padding: 6px 10px;
+            border-radius: 4px;
+            max-width: 240px;
+            font-size: 0.85rem;
+        }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: grid; }
+
+        .dashboard {
+            grid-template-columns: 280px 1fr 320px;
+            gap: 20px;
+        }
+
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.08);
+            border-radius: 8px;
+            padding: 16px;
+            backdrop-filter: blur(10px);
+        }
+
+        /* --- ARC REACTOR ANIMATION --- */
+        .reactor-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 240px;
+            margin: 10px 0;
+            position: relative;
+            background: radial-gradient(circle, rgba(0, 240, 255, 0.12) 0%, rgba(0, 0, 0, 0) 70%);
+        }
+
+        .arc-reactor-core {
+            position: relative;
+            width: 190px;
+            height: 190px;
+            border-radius: 50%;
+            background: #040a14;
+            border: 3px solid #102a45;
+            box-shadow: 0 0 35px rgba(0, 240, 255, 0.6), inset 0 0 25px rgba(0, 240, 255, 0.4);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .outer-casing {
+            position: absolute;
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            border: 4px dashed rgba(0, 240, 255, 0.7);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
+            animation: rotate-cw 20s linear infinite;
+        }
+
+        .coils-container {
+            position: absolute;
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+        }
+
+        .coil {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 12px;
+            height: 24px;
+            background: linear-gradient(180deg, #d4af37, #8a6d1c);
+            border: 1px solid #ffea9f;
+            border-radius: 2px;
+            box-shadow: 0 0 8px rgba(255, 183, 0, 0.7);
+            transform-origin: 50% 50%;
+            transform: translate(-50%, -50%) rotate(calc(var(--i) * 36deg)) translateY(-65px);
+        }
+
+        .rotating-ring { position: absolute; border-radius: 50%; }
+
+        .outer-gear {
+            width: 110px;
+            height: 110px;
+            border: 3px dashed #00f0ff;
+            animation: rotate-ccw 10s linear infinite;
+        }
+
+        .inner-gear {
+            width: 80px;
+            height: 80px;
+            border: 2px dotted #ffb700;
+            animation: rotate-cw 6s linear infinite;
+        }
+
+        .plasma-chamber {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #ffffff 10%, #00f0ff 60%, rgba(0, 240, 255, 0.2) 100%);
+            box-shadow: 0 0 20px #00f0ff, 0 0 40px #00f0ff, 0 0 60px #00f0ff;
+            animation: core-pulse 1.8s ease-in-out infinite alternate;
+        }
+
+        .center-lens {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #ffffff;
+            box-shadow: 0 0 15px #ffffff, 0 0 30px #00f0ff;
+            border: 2px solid #00f0ff;
+        }
+
+        .hud-pulse-ring {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 2px solid rgba(0, 240, 255, 0.8);
+            animation: hud-expand 2.5s infinite ease-out;
+        }
+
+        @keyframes rotate-cw { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes rotate-ccw { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+        @keyframes core-pulse {
+            0% { transform: scale(0.92); box-shadow: 0 0 15px #00f0ff, 0 0 30px #00f0ff; }
+            100% { transform: scale(1.08); box-shadow: 0 0 30px #00f0ff, 0 0 70px #00f0ff, 0 0 100px #ffffff; }
+        }
+        @keyframes hud-expand {
+            0% { transform: scale(0.8); opacity: 0.9; }
+            100% { transform: scale(1.45); opacity: 0; }
+        }
+
+        .clock { text-align: right; }
+        .clock b { display: block; font-size: 1.8rem; color: var(--stark-cyan); text-shadow: 0 0 10px var(--stark-cyan); }
+        .clock span { font-size: 0.85rem; color: var(--stark-gold); letter-spacing: 1px; }
+
+        .side button { width: 100%; text-align: left; margin-bottom: 6px; }
+
+        .device {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 10px 0;
+            padding: 8px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 4px;
+        }
+
+        .device p { flex: 1; margin: 0; }
+
+        .weather-search { display: flex; gap: 6px; margin-bottom: 12px; }
+        .weather-search input, #prompt, input[type="text"], select {
+            flex: 1;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid var(--border-color);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 4px;
+            outline: none;
+        }
+
+        #transcript { height: 140px; overflow-y: auto; border-bottom: 1px solid var(--border-color); margin-bottom: 10px; padding: 8px; }
+        .chat form { display: flex; gap: 10px; }
+
+        .editor-workspace {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 20px;
+        }
+
+        .editor-controls { display: flex; flex-direction: column; gap: 12px; }
+        .editor-controls label { font-size: 0.85rem; color: var(--stark-gold); }
+        .editor-controls input[type="range"] { width: 100%; accent-color: var(--stark-cyan); }
+
+        .canvas-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: #000;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            min-height: 400px;
+            overflow: hidden;
+            position: relative;
+            padding: 10px;
+        }
+
+        canvas, video { max-width: 100%; max-height: 420px; }
+        #audio-canvas { width: 100%; height: 350px; background: #030812; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <main class="app-shell">
+        <header>
+            <a class="brand"><span>▲</span><b>J.A.R.V.I.S. <i>SYSTEMS</i></b></a>
+            <nav>
+                <button class="nav-tab active" data-tab="tab-core">Arc Core</button>
+                <button class="nav-tab" data-tab="tab-image">Image Editor</button>
+                <button class="nav-tab" data-tab="tab-video">Video Editor</button>
+                <button class="nav-tab" data-tab="tab-audio">Audio Studio</button>
+            </nav>
+            <div class="voice-controls">
+                <select id="voice-select" title="Select Voice Engine"></select>
+                <button id="sound-toggle">🔊 FX ON</button>
+            </div>
+        </header>
+
+        <section class="welcome" style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <p style="color: var(--stark-gold); margin: 0 0 4px; font-size: 0.85rem; letter-spacing: 1px;">STARK INDUSTRIES REPAIRED ENGINE</p>
+                <h1 style="margin: 0; font-size: 1.8rem;">Welcome back, <em>Sir.</em></h1>
+                <small>Global knowledge base, smart home, app launchers &amp; live satellite weather online.</small>
+            </div>
+            <div class="clock">
+                <b id="clock-time">--:--:-- --</b>
+                <span id="clock-date">INITIALIZING</span>
+            </div>
+        </section>
+
+        <!-- TAB 1: MAIN ARC DASHBOARD -->
+        <section id="tab-core" class="tab-content dashboard active">
+            <aside class="side panel">
+                <div class="profile" style="margin-bottom: 15px;">
+                    <strong style="color: var(--stark-cyan); font-size: 1.1rem;">J.A.R.V.I.S. AI CORE</strong><br>
+                    <small style="color: #88a0c0;">Mark IX Desktop Integration</small>
+                </div>
+
+                <label style="display:block; margin: 12px 0 6px; font-size: 0.8rem; color: var(--stark-gold);">SYSTEM LAUNCHERS</label>
+                <button data-app="vscode">💻 <span>Open VS Code</span></button>
+                <button data-app="spotify">🎵 <span>Launch Spotify</span></button>
+                <button data-app="discord">💬 <span>Launch Discord</span></button>
+                <button data-app="calc">🧮 <span>System Calculator</span></button>
+
+                <label style="display:block; margin: 12px 0 6px; font-size: 0.8rem; color: var(--stark-gold);">HOME AUTOMATION</label>
+                <div class="device">
+                    <span>💡</span>
+                    <p><b>Living Room Light</b><br><small id="light-state" style="color: var(--stark-red);">State: OFFLINE (OFF)</small></p>
+                    <button class="appliance-btn" data-device="light" data-action="on">ON</button>
+                    <button class="appliance-btn" data-device="light" data-action="off">OFF</button>
+                </div>
+                <div class="device">
+                    <span>🌀</span>
+                    <p><b>Cooling Fan</b><br><small id="fan-state" style="color: var(--stark-red);">State: OFFLINE (OFF)</small></p>
+                    <button class="appliance-btn" data-device="fan" data-action="on">ON</button>
+                    <button class="appliance-btn" data-device="fan" data-action="off">OFF</button>
+                </div>
+            </aside>
+
+            <section class="core panel">
+                <div class="corehead" style="display: flex; justify-content: space-between;">
+                    <span>ARC REACTOR <i>MARK IX</i></span>
+                    <b id="mic-status" style="color: var(--stark-cyan);">READY</b>
+                </div>
+
+                <div class="reactor-container">
+                    <div class="arc-reactor-core">
+                        <div class="outer-casing"></div>
+                        <div class="coils-container">
+                            <div class="coil" style="--i:1;"></div>
+                            <div class="coil" style="--i:2;"></div>
+                            <div class="coil" style="--i:3;"></div>
+                            <div class="coil" style="--i:4;"></div>
+                            <div class="coil" style="--i:5;"></div>
+                            <div class="coil" style="--i:6;"></div>
+                            <div class="coil" style="--i:7;"></div>
+                            <div class="coil" style="--i:8;"></div>
+                            <div class="coil" style="--i:9;"></div>
+                            <div class="coil" style="--i:10;"></div>
+                        </div>
+                        <div class="rotating-ring outer-gear"></div>
+                        <div class="rotating-ring inner-gear"></div>
+                        <div class="plasma-chamber"></div>
+                        <div class="center-lens"></div>
+                        <div class="hud-pulse-ring"></div>
+                    </div>
+                </div>
+
+                <p id="system-prompt" style="text-align: center;">Voice recognition ready. <span>Ask any GK question, calculate math, launch software, or toggle devices.</span></p>
+                <button id="listen" class="voice">🎙 Tap to Speak / Hold SPACE</button>
+            </section>
+
+            <aside class="right">
+                <section class="weather panel">
+                    <div class="title" style="margin-bottom: 8px; font-weight: bold; display: flex; justify-content: space-between; align-items: center;">
+                        <span>ENVIRONMENTAL DIAGNOSTICS</span>
+                        <button id="refresh-weather" class="hud-btn" style="padding: 2px 8px;" title="Refresh Weather">↻</button>
+                    </div>
+                    <div class="weather-search">
+                        <input type="text" id="city-input" placeholder="Enter city (e.g., Tokyo, Palakkad, London)...">
+                        <button id="search-city-btn" class="hud-btn">Go</button>
+                    </div>
+                    <div class="temp" style="margin: 10px 0;">
+                        <b id="weather-temp" style="font-size: 2rem; color: var(--stark-cyan);">--°C</b>
+                        <p><strong id="weather-place">DETECTING LOCATION...</strong><br><small id="weather-condition" style="color: var(--stark-gold);">Connecting to satellite telemetry...</small></p>
+                    </div>
+                    <div class="details" style="font-size: 0.85rem;">💧 Humidity: <b id="humidity">--%</b> | 💨 Wind: <b id="wind">-- km/h</b></div>
+                </section>
+
+                <section class="activity panel" style="margin-top: 15px;">
+                    <div class="title" style="margin-bottom: 8px; font-weight: bold;">SYSTEM LOGS</div>
+                    <div id="activity-list" style="max-height: 140px; overflow-y: auto; font-size: 0.85rem;">
+                        <p><span><b>Jarvis Core Initialized</b>: Native Hardware Bridge &amp; Search API Active</span></p>
+                    </div>
+                </section>
+            </aside>
+        </section>
+
+        <!-- TAB 2: IMAGE EDITOR -->
+        <section id="tab-image" class="tab-content editor-workspace">
+            <aside class="panel editor-controls">
+                <h3 style="color: var(--stark-cyan); margin-top: 0;">IMAGE STUDIO</h3>
+                <label>Upload Image:
+                    <input type="file" id="image-upload" accept="image/*" style="margin-top: 5px;">
+                </label>
+                <label>Brightness
+                    <input type="range" id="img-brightness" min="0" max="200" value="100">
+                </label>
+                <label>Contrast
+                    <input type="range" id="img-contrast" min="0" max="200" value="100">
+                </label>
+                <label>Grayscale
+                    <input type="range" id="img-grayscale" min="0" max="100" value="0">
+                </label>
+                <label>Blur
+                    <input type="range" id="img-blur" min="0" max="10" value="0">
+                </label>
+                <button id="img-reset" class="hud-btn">Reset Filters</button>
+                <button id="img-download" class="hud-btn" style="background: var(--stark-cyan); color: #000;">Export Image ↗</button>
+            </aside>
+            <main class="panel canvas-container">
+                <canvas id="image-canvas"></canvas>
+                <span id="image-placeholder" style="color: #6688aa;">Select an image to begin editing</span>
+            </main>
+        </section>
+
+        <!-- TAB 3: VIDEO EDITOR -->
+        <section id="tab-video" class="tab-content editor-workspace">
+            <aside class="panel editor-controls">
+                <h3 style="color: var(--stark-cyan); margin-top: 0;">VIDEO STUDIO</h3>
+                <label>Upload Video:
+                    <input type="file" id="video-upload" accept="video/*" style="margin-top: 5px;">
+                </label>
+                <label>Playback Speed
+                    <select id="video-speed">
+                        <option value="0.5">0.5x</option>
+                        <option value="1.0" selected>1.0x (Normal)</option>
+                        <option value="1.5">1.5x</option>
+                        <option value="2.0">2.0x</option>
+                    </select>
+                </label>
+                <label>Visual Filter
+                    <select id="video-filter">
+                        <option value="none">Normal</option>
+                        <option value="grayscale(100%)">Monochrome</option>
+                        <option value="sepia(100%)">Classic Sepia</option>
+                        <option value="contrast(180%)">High Contrast HUD</option>
+                        <option value="invert(100%)">X-Ray Invert</option>
+                    </select>
+                </label>
+                <button id="video-play-pause" class="hud-btn">Play / Pause</button>
+                <button id="video-snapshot" class="hud-btn">Take Snapshot</button>
+            </aside>
+            <main class="panel canvas-container">
+                <video id="video-player" controls style="display: none;"></video>
+                <span id="video-placeholder" style="color: #6688aa;">Select a video file to play &amp; edit</span>
+            </main>
+        </section>
+
+        <!-- TAB 4: AUDIO EDITOR -->
+        <section id="tab-audio" class="tab-content editor-workspace">
+            <aside class="panel editor-controls">
+                <h3 style="color: var(--stark-cyan); margin-top: 0;">AUDIO STUDIO</h3>
+                <label>Upload Audio Track:
+                    <input type="file" id="audio-upload" accept="audio/*" style="margin-top: 5px;">
+                </label>
+                <label>Volume / Gain:
+                    <input type="range" id="audio-gain" min="0" max="3" step="0.1" value="1">
+                </label>
+                <label>Playback Speed:
+                    <select id="audio-speed">
+                        <option value="0.5">0.5x Slow</option>
+                        <option value="0.85">0.85x Studio</option>
+                        <option value="1.0" selected>1.0x Normal</option>
+                        <option value="1.25">1.25x Fast</option>
+                        <option value="1.5">1.5x Rapid</option>
+                        <option value="2.0">2.0x Double</option>
+                    </select>
+                </label>
+                <label>Lowpass Cutoff (Hz):
+                    <input type="range" id="audio-filter-freq" min="200" max="20000" step="200" value="20000">
+                </label>
+                <label>Visualizer Mode:
+                    <select id="visualizer-mode">
+                        <option value="frequency">Frequency Spectrum Bar</option>
+                        <option value="waveform">Waveform Oscilloscope</option>
+                    </select>
+                </label>
+                <button id="audio-play-pause" class="hud-btn">▶ Play Track</button>
+                <audio id="audio-player" style="display: none;"></audio>
+            </aside>
+            <main class="panel canvas-container">
+                <canvas id="audio-canvas"></canvas>
+                <span id="audio-placeholder" style="color: #6688aa; position: absolute;">Upload an audio file to display real-time spectral analytics</span>
+            </main>
+        </section>
+
+        <!-- UNIVERSAL COMMAND & CHAT INTERFACE -->
+        <section class="chat panel">
+            <div id="transcript">
+                <p class="assistant"><b>J.A.R.V.I.S.</b>: <span>System online. Ask me general knowledge questions, check weather anywhere, launch software via Python bridge, or control smart appliances.</span></p>
+            </div>
+            <form id="prompt-form">
+                <input id="prompt" autocomplete="off" placeholder="Ask J.A.R.V.I.S. anything or speak commands...">
+                <button type="submit">Execute ↗</button>
+            </form>
+        </section>
+    </main>
+
+    <script>
+        /* ============================================================
+           1. AUDIO FX & VOICE SYNTHESIZER
+           ============================================================ */
+        const AudioFX = {
+            ctx: null,
+            enabled: true,
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            },
+            playClearBeep(freq = 1000, type = 'sine', duration = 0.08) {
+                if (!this.enabled) return;
+                this.init();
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch (e) { console.error(e); }
+            }
+        };
+
+        let systemVoices = [];
+
+        function loadVoices() {
+            if (!('speechSynthesis' in window)) return;
+            systemVoices = window.speechSynthesis.getVoices();
+            const voiceSelect = document.getElementById('voice-select');
+            if (!voiceSelect) return;
+
+            voiceSelect.innerHTML = '';
+            
+            systemVoices.forEach((v, i) => {
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.textContent = `${v.name} (${v.lang})`;
+                voiceSelect.appendChild(opt);
+            });
+
+            const bestVoiceIndex = systemVoices.findIndex(v => 
+                v.lang.startsWith('en') && (
+                    v.name.includes('Natural') || 
+                    v.name.includes('Online') || 
+                    v.name.includes('Google UK English Male') || 
+                    v.name.includes('Google US English') ||
+                    v.name.includes('Enhanced') ||
+                    v.name.includes('Daniel')
+                )
+            );
+
+            if (bestVoiceIndex !== -1) {
+                voiceSelect.value = bestVoiceIndex;
+            }
+        }
+
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.onvoiceschanged = loadVoices;
+            loadVoices();
+        }
+
+        function speakJarvis(text) {
+            if (!('speechSynthesis' in window)) return;
+            window.speechSynthesis.cancel();
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            const voiceSelect = document.getElementById('voice-select');
+
+            if (voiceSelect && systemVoices[voiceSelect.value]) {
+                utterance.voice = systemVoices[voiceSelect.value];
+            } else {
+                const preferred = systemVoices.find(v => v.lang.startsWith('en')) || systemVoices[0];
+                if (preferred) utterance.voice = preferred;
+            }
+
+            utterance.pitch = 0.98;
+            utterance.rate = 1.0;
+            utterance.volume = 1.0;
+
+            AudioFX.playClearBeep(1100, 'sine', 0.06);
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function addLog(msg) {
+            const list = document.getElementById('activity-list');
+            if (list) {
+                const p = document.createElement('p');
+                p.innerHTML = `<span><b>${new Date().toLocaleTimeString()}</b>: ${msg}</span>`;
+                list.prepend(p);
+            }
+        }
+
+        /* ============================================================
+           2. SATELLITE WEATHER ENGINE
+           ============================================================ */
+        function getWeatherDescription(code) {
+            const codes = {
+                0: "Clear Sky", 1: "Mainly Clear", 2: "Partly Cloudy", 3: "Overcast",
+                45: "Foggy", 48: "Depositing Rime Fog", 51: "Light Drizzle", 53: "Moderate Drizzle",
+                55: "Dense Drizzle", 61: "Slight Rain", 63: "Moderate Rain", 65: "Heavy Rain",
+                71: "Slight Snow", 73: "Moderate Snow", 75: "Heavy Snow", 80: "Slight Rain Showers",
+                81: "Moderate Rain Showers", 82: "Violent Rain Showers", 95: "Thunderstorm"
+            };
+            return codes[code] || "Normal Conditions";
+        }
+
+        async function fetchWeather(city = '', announceVoice = false) {
+            const tempEl = document.getElementById('weather-temp');
+            const placeEl = document.getElementById('weather-place');
+            const condEl = document.getElementById('weather-condition');
+            const humidityEl = document.getElementById('humidity');
+            const windEl = document.getElementById('wind');
+
+            if (tempEl) tempEl.innerText = "...";
+            if (placeEl) placeEl.innerText = city ? city.toUpperCase() : "FETCHING TELEMETRY...";
+            if (condEl) condEl.innerText = "Querying Open-Meteo Satellite...";
+
+            let lat = 51.5074;
+            let lon = -0.1278;
+            let name = 'LONDON';
+
+            if (city) {
+                try {
+                    const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`);
+                    const geo = await geoRes.json();
+                    if (geo.results && geo.results.length > 0) {
+                        lat = geo.results[0].latitude;
+                        lon = geo.results[0].longitude;
+                        name = geo.results[0].name.toUpperCase();
+                    } else {
+                        if (placeEl) placeEl.innerText = city.toUpperCase();
+                        if (condEl) condEl.innerText = "City not found in database";
+                        if (tempEl) tempEl.innerText = "--°C";
+                        const errText = `Could not locate weather data for ${city}.`;
+                        appendChat("J.A.R.V.I.S.", errText);
+                        speakJarvis(errText);
+                        return;
+                    }
+                } catch (e) {
+                    console.error("Geocoding failed", e);
+                }
+            } else {
+                name = 'LONDON';
+            }
+
+            try {
+                const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code`;
+                const res = await fetch(url);
+                const data = await res.json();
+
+                if (data && data.current) {
+                    const temp = Math.round(data.current.temperature_2m);
+                    const hum = data.current.relative_humidity_2m;
+                    const wind = Math.round(data.current.wind_speed_10m);
+                    const condition = getWeatherDescription(data.current.weather_code);
+
+                    if (tempEl) tempEl.innerText = `${temp}°C`;
+                    if (placeEl) placeEl.innerText = name;
+                    if (condEl) condEl.innerText = condition;
+                    if (humidityEl) humidityEl.innerText = `${hum}%`;
+                    if (windEl) windEl.innerText = `${wind} km/h`;
+
+                    const logMsg = `Weather for ${name}: ${temp}°C, ${condition}`;
+                    addLog(logMsg);
+
+                    if (announceVoice) {
+                        const voiceMsg = `Current weather in ${name} is ${temp} degrees Celsius with ${condition}.`;
+                        appendChat("J.A.R.V.I.S.", voiceMsg);
+                        speakJarvis(voiceMsg);
+                    }
+                }
+            } catch (e) {
+                console.error("Weather fetch failed", e);
+                if (placeEl) placeEl.innerText = "TELEMETRY ERROR";
+                if (condEl) condEl.innerText = "Unable to connect to Open-Meteo";
+                if (tempEl) tempEl.innerText = "ERR";
+            }
+        }
+
+        function autoDetectAndFetchWeather() {
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    async (pos) => {
+                        const lat = pos.coords.latitude;
+                        const lon = pos.coords.longitude;
+                        try {
+                            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code`;
+                            const res = await fetch(url);
+                            const data = await res.json();
+
+                            let cityName = "LOCAL LOCATION";
+                            try {
+                                const revRes = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`);
+                                const revData = await revRes.json();
+                                if (revData.city || revData.locality) {
+                                    cityName = (revData.city || revData.locality).toUpperCase();
+                                }
+                            } catch(e){}
+
+                            if (data && data.current) {
+                                const temp = Math.round(data.current.temperature_2m);
+                                const condition = getWeatherDescription(data.current.weather_code);
+                                document.getElementById('weather-temp').innerText = `${temp}°C`;
+                                document.getElementById('weather-place').innerText = cityName;
+                                document.getElementById('weather-condition').innerText = condition;
+                                document.getElementById('humidity').innerText = `${data.current.relative_humidity_2m}%`;
+                                document.getElementById('wind').innerText = `${Math.round(data.current.wind_speed_10m)} km/h`;
+                                addLog(`Auto-detected local weather for ${cityName}: ${temp}°C`);
+                            }
+                        } catch(e) {
+                            fetchWeather('', false);
+                        }
+                    },
+                    (err) => {
+                        fetchWeather('', false);
+                    },
+                    { timeout: 5000 }
+                );
+            } else {
+                fetchWeather('', false);
+            }
+        }
+
+        /* ============================================================
+           3. PYTHON BRIDGE APPLICATION LAUNCHER ENGINE
+           ============================================================ */
+        async function launchSoftware(app) {
+            appendChat("J.A.R.V.I.S.", `Requesting execution for ${app}...`);
+            speakJarvis(`Attempting to launch ${app}, Sir.`);
+
+            try {
+                const response = await fetch('http://127.0.0.1:5000/launch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ app: app })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.status === 'success') {
+                    appendChat("J.A.R.V.I.S.", `Native application ${app} initiated.`);
+                    addLog(`Native Launch Success: ${app}`);
+                } else {
+                    throw new Error(data.message || 'Server rejected command');
+                }
+            } catch (err) {
+                console.warn("Local Python bridge unavailable, falling back to web launch:", err);
+                
+                const fallbacks = {
+                    vscode: "https://vscode.dev",
+                    spotify: "https://open.spotify.com",
+                    discord: "https://discord.com/app",
+                    calc: "https://www.google.com/search?q=calculator"
+                };
+
+                if (fallbacks[app]) {
+                    appendChat("J.A.R.V.I.S.", `Local backend offline. Opening web version of ${app}.`);
+                    window.open(fallbacks[app], '_blank');
+                } else {
+                    appendChat("J.A.R.V.I.S.", `Error: Could not launch ${app}. Ensure backend.py is running.`);
+                }
+            }
+        }
+
+        /* ============================================================
+           4. SMART HOME AUTOMATION & HARDWARE BRIDGE ENGINE
+           ============================================================ */
+        const deviceStates = {
+            light: false,
+            fan: false
+        };
+
+        async function setDeviceState(device, state) {
+            deviceStates[device] = state;
+            
+            // Update UI state indicators
+            const stateEl = document.getElementById(`${device}-state`);
+            if (stateEl) {
+                stateEl.innerText = `State: ${state ? 'ONLINE (ON)' : 'OFFLINE (OFF)'}`;
+                stateEl.style.color = state ? 'var(--stark-green)' : 'var(--stark-red)';
+            }
+
+            const actionText = state ? 'ON' : 'OFF';
+            const statusMsg = `Living room ${device === 'light' ? 'light' : 'cooling fan'} turned ${actionText}.`;
+            appendChat("J.A.R.V.I.S.", statusMsg);
+            speakJarvis(statusMsg);
+            addLog(`Home Automation: ${device.toUpperCase()} set to ${actionText}`);
+
+            // Send command to Python backend for real hardware switching
+            try {
+                await fetch('http://127.0.0.1:5000/device', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ device: device, state: actionText })
+                });
+            } catch (e) {
+                console.warn("Hardware backend bridge offline. State updated locally in UI.", e);
+            }
+        }
+
+        /* ============================================================
+           5. WIKIPEDIA API & GENERAL KNOWLEDGE ENGINE
+           ============================================================ */
+        async function fetchWikipediaAnswer(query) {
+            try {
+                const cleanQuery = query.replace(/what is|who is|tell me about|explain|search for|define|where is/gi, '').trim();
+                
+                // Step 1: Query Wikipedia search endpoint to find matching article
+                const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(cleanQuery || query)}&utf8=&format=json&origin=*`;
+                const searchRes = await fetch(searchUrl);
+                const searchData = await searchRes.json();
+
+                if (searchData && searchData.query && searchData.query.search && searchData.query.search.length > 0) {
+                    // Step 2: Fetch summary extract for top title
+                    const topTitle = searchData.query.search[0].title;
+                    const summaryUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(topTitle)}`;
+                    const summaryRes = await fetch(summaryUrl);
+
+                    if (summaryRes.ok) {
+                        const summaryData = await summaryRes.json();
+                        return summaryData.extract || null;
+                    }
+                }
+            } catch (err) {
+                console.error("Wikipedia search failed:", err);
+            }
+            return null;
+        }
+
+        function solveMathExpression(expr) {
+            try {
+                let formatted = expr.toLowerCase()
+                    .replace(/sin/g, 'Math.sin')
+                    .replace(/cos/g, 'Math.cos')
+                    .replace(/tan/g, 'Math.tan')
+                    .replace(/sqrt/g, 'Math.sqrt')
+                    .replace(/log/g, 'Math.log10')
+                    .replace(/ln/g, 'Math.log')
+                    .replace(/pow/g, 'Math.pow')
+                    .replace(/pi/g, 'Math.PI')
+                    .replace(/e/g, 'Math.E')
+                    .replace(/\^/g, '**');
+
+                const result = new Function(`return ${formatted}`)();
+                if (typeof result === 'number' && !isNaN(result)) {
+                    return Number.isInteger(result) ? result : parseFloat(result.toFixed(6));
+                }
+            } catch (err) {
+                return null;
+            }
+            return null;
+        }
+
+        async function processQuestionOrCommand(input) {
+            appendChat("User", input);
+            const lower = input.toLowerCase().trim();
+
+            // A. Math Check
+            const calculated = solveMathExpression(input.replace(/calculate|solve|what is/gi, '').trim());
+            if (calculated !== null) {
+                const answer = `Calculated Result: ${calculated}`;
+                appendChat("J.A.R.V.I.S.", answer);
+                speakJarvis(`The calculated result is ${calculated}`);
+                return;
+            }
+
+            // B. Weather Intent Parsing
+            if (lower.includes("weather") || lower.includes("temperature") || lower.includes("climate")) {
+                const cityMatch = lower.match(/(?:weather|temperature|climate)(?: in| for)?\s*([a-zA-Z\s]+)/);
+                const city = cityMatch ? cityMatch[1].trim() : '';
+                fetchWeather(city, true);
+                return;
+            }
+
+            // C. Flexible Home Automation Commands
+            const isTurnOn = /\b(on|enable|start|activate|switch on|turn on)\b/i.test(lower);
+            const isTurnOff = /\b(off|disable|stop|deactivate|switch off|turn off)\b/i.test(lower);
+
+            if (isTurnOn || isTurnOff) {
+                const newState = isTurnOn;
+                
+                if (/\b(light|lights|lamp|bulb)\b/i.test(lower)) {
+                    setDeviceState("light", newState);
+                    return;
+                }
+                
+                if (/\b(fan|cooler|ac|cooling)\b/i.test(lower)) {
+                    setDeviceState("fan", newState);
+                    return;
+                }
+            }
+
+            // D. Software Launching Commands
+            if (lower.startsWith("open ") || lower.startsWith("launch ")) {
+                const app = lower.replace(/open|launch/g, '').trim();
+                if (app.includes("vscode") || app.includes("code")) { launchSoftware("vscode"); return; }
+                if (app.includes("spotify") || app.includes("music")) { launchSoftware("spotify"); return; }
+                if (app.includes("discord") || app.includes("chat")) { launchSoftware("discord"); return; }
+                if (app.includes("calc") || app.includes("calculator")) { launchSoftware("calc"); return; }
+            }
+
+            // E. System Info Questions
+            if (lower.includes("who are you") || lower.includes("your name")) {
+                const reply = "I am J.A.R.V.I.S., your high-definition Stark Industries AI command node.";
+                appendChat("J.A.R.V.I.S.", reply);
+                speakJarvis(reply);
+                return;
+            }
+
+            if (lower.includes("time") || lower.includes("date")) {
+                const now = new Date();
+                const reply = `The time is ${now.toLocaleTimeString()} on ${now.toLocaleDateString()}.`;
+                appendChat("J.A.R.V.I.S.", reply);
+                speakJarvis(reply);
+                return;
+            }
+
+            // F. Real-time General Knowledge (Wikipedia Search Index)
+            appendChat("J.A.R.V.I.S.", "Accessing Stark Knowledge Network...");
+            const wikiSummary = await fetchWikipediaAnswer(input);
+            if (wikiSummary) {
+                const shortSummary = wikiSummary.split('. ').slice(0, 3).join('. ') + '.';
+                appendChat("J.A.R.V.I.S.", shortSummary);
+                speakJarvis(shortSummary);
+                return;
+            }
+
+            // G. Fallback Response
+            const fallback = `I searched global archives for "${input}", but could not locate a direct record. Please refine your query or topic.`;
+            appendChat("J.A.R.V.I.S.", fallback);
+            speakJarvis("I could not locate specific data for that request in the current archives.");
+        }
+
+        /* ============================================================
+           6. AUDIO STUDIO & VISUALIZER ENGINE
+           ============================================================ */
+        const audioInput = document.getElementById('audio-upload');
+        const audioPlayer = document.getElementById('audio-player');
+        const audioCanvas = document.getElementById('audio-canvas');
+        const audioCtxCanvas = audioCanvas?.getContext('2d');
+
+        let audioWebCtx = null;
+        let audioSourceNode = null;
+        let gainNode = null;
+        let filterNode = null;
+        let analyserNode = null;
+        let isAudioSetup = false;
+        let animFrameId = null;
+
+        function initAudioEngine() {
+            if (isAudioSetup) return;
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            audioWebCtx = new AudioContextClass();
+
+            audioSourceNode = audioWebCtx.createMediaElementSource(audioPlayer);
+            gainNode = audioWebCtx.createGain();
+            filterNode = audioWebCtx.createBiquadFilter();
+            analyserNode = audioWebCtx.createAnalyser();
+
+            filterNode.type = 'lowpass';
+            filterNode.frequency.value = 20000;
+            analyserNode.fftSize = 256;
+
+            audioSourceNode.connect(filterNode);
+            filterNode.connect(gainNode);
+            gainNode.connect(analyserNode);
+            analyserNode.connect(audioWebCtx.destination);
+
+            isAudioSetup = true;
+        }
+
+        audioInput?.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            initAudioEngine();
+            audioPlayer.src = URL.createObjectURL(file);
+            document.getElementById('audio-placeholder').style.display = 'none';
+            document.getElementById('audio-play-pause').innerText = "▶ Play Track";
+
+            audioCanvas.width = audioCanvas.clientWidth;
+            audioCanvas.height = audioCanvas.clientHeight;
+        });
+
+        document.getElementById('audio-play-pause')?.addEventListener('click', () => {
+            if (!audioPlayer.src) return;
+            initAudioEngine();
+
+            if (audioWebCtx.state === 'suspended') {
+                audioWebCtx.resume();
+            }
+
+            if (audioPlayer.paused) {
+                audioPlayer.play();
+                document.getElementById('audio-play-pause').innerText = "⏸ Pause Track";
+                drawAudioVisualizer();
+            } else {
+                audioPlayer.pause();
+                document.getElementById('audio-play-pause').innerText = "▶ Play Track";
+                cancelAnimationFrame(animFrameId);
+            }
+        });
+
+        document.getElementById('audio-gain')?.addEventListener('input', (e) => {
+            if (gainNode) gainNode.gain.value = parseFloat(e.target.value);
+        });
+
+        document.getElementById('audio-speed')?.addEventListener('change', (e) => {
+            audioPlayer.playbackRate = parseFloat(e.target.value);
+        });
+
+        document.getElementById('audio-filter-freq')?.addEventListener('input', (e) => {
+            if (filterNode) filterNode.frequency.value = parseFloat(e.target.value);
+        });
+
+        function drawAudioVisualizer() {
+            if (!analyserNode) return;
+            const bufferLength = analyserNode.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            const mode = document.getElementById('visualizer-mode').value;
+
+            const width = audioCanvas.width;
+            const height = audioCanvas.height;
+
+            function renderFrame() {
+                animFrameId = requestAnimationFrame(renderFrame);
+                audioCtxCanvas.fillStyle = '#030812';
+                audioCtxCanvas.fillRect(0, 0, width, height);
+
+                if (mode === 'frequency') {
+                    analyserNode.getByteFrequencyData(dataArray);
+                    const barWidth = (width / bufferLength) * 2.2;
+                    let x = 0;
+
+                    for (let i = 0; i < bufferLength; i++) {
+                        const barHeight = (dataArray[i] / 255) * height;
+                        
+                        const gradient = audioCtxCanvas.createLinearGradient(0, height - barHeight, 0, height);
+                        gradient.addColorStop(0, '#00f0ff');
+                        gradient.addColorStop(0.7, '#ffb700');
+                        gradient.addColorStop(1, '#ff2a2a');
+
+                        audioCtxCanvas.fillStyle = gradient;
+                        audioCtxCanvas.fillRect(x, height - barHeight, barWidth - 1, barHeight);
+
+                        x += barWidth;
+                    }
+                } else if (mode === 'waveform') {
+                    analyserNode.getByteTimeDomainData(dataArray);
+                    audioCtxCanvas.lineWidth = 2;
+                    audioCtxCanvas.strokeStyle = '#00f0ff';
+                    audioCtxCanvas.beginPath();
+
+                    const sliceWidth = width * 1.0 / bufferLength;
+                    let x = 0;
+
+                    for (let i = 0; i < bufferLength; i++) {
+                        const v = dataArray[i] / 128.0;
+                        const y = v * height / 2;
+
+                        if (i === 0) audioCtxCanvas.moveTo(x, y);
+                        else audioCtxCanvas.lineTo(x, y);
+
+                        x += sliceWidth;
+                    }
+
+                    audioCtxCanvas.lineTo(width, height / 2);
+                    audioCtxCanvas.stroke();
+                }
+            }
+
+            renderFrame();
+        }
+
+        /* ============================================================
+           7. MEDIA EDITORS (IMAGE & VIDEO)
+           ============================================================ */
+        const imgInput = document.getElementById('image-upload');
+        const imgCanvas = document.getElementById('image-canvas');
+        const ctx = imgCanvas?.getContext('2d');
+        let currentImg = null;
+
+        imgInput?.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    currentImg = img;
+                    imgCanvas.width = img.width;
+                    imgCanvas.height = img.height;
+                    document.getElementById('image-placeholder').style.display = 'none';
+                    renderImage();
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        function renderImage() {
+            if (!currentImg || !ctx) return;
+            const b = document.getElementById('img-brightness').value;
+            const c = document.getElementById('img-contrast').value;
+            const g = document.getElementById('img-grayscale').value;
+            const blur = document.getElementById('img-blur').value;
+
+            ctx.filter = `brightness(${b}%) contrast(${c}%) grayscale(${g}%) blur(${blur}px)`;
+            ctx.drawImage(currentImg, 0, 0, imgCanvas.width, imgCanvas.height);
+        }
+
+        ['img-brightness', 'img-contrast', 'img-grayscale', 'img-blur'].forEach(id => {
+            document.getElementById(id)?.addEventListener('input', renderImage);
+        });
+
+        document.getElementById('img-reset')?.addEventListener('click', () => {
+            document.getElementById('img-brightness').value = 100;
+            document.getElementById('img-contrast').value = 100;
+            document.getElementById('img-grayscale').value = 0;
+            document.getElementById('img-blur').value = 0;
+            renderImage();
+        });
+
+        document.getElementById('img-download')?.addEventListener('click', () => {
+            if (!currentImg) return;
+            const a = document.createElement('a');
+            a.download = 'stark-edited-image.png';
+            a.href = imgCanvas.toDataURL();
+            a.click();
+        });
+
+        // Video Studio
+        const videoInput = document.getElementById('video-upload');
+        const videoPlayer = document.getElementById('video-player');
+
+        videoInput?.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            videoPlayer.src = URL.createObjectURL(file);
+            videoPlayer.style.display = 'block';
+            document.getElementById('video-placeholder').style.display = 'none';
+        });
+
+        document.getElementById('video-speed')?.addEventListener('change', (e) => {
+            videoPlayer.playbackRate = parseFloat(e.target.value);
+        });
+
+        document.getElementById('video-filter')?.addEventListener('change', (e) => {
+            videoPlayer.style.filter = e.target.value;
+        });
+
+        document.getElementById('video-play-pause')?.addEventListener('click', () => {
+            if (videoPlayer.paused) videoPlayer.play();
+            else videoPlayer.pause();
+        });
+
+        document.getElementById('video-snapshot')?.addEventListener('click', () => {
+            if (!videoPlayer.src) return;
+            const snapCanvas = document.createElement('canvas');
+            snapCanvas.width = videoPlayer.videoWidth;
+            snapCanvas.height = videoPlayer.videoHeight;
+            const snapCtx = snapCanvas.getContext('2d');
+            snapCtx.filter = videoPlayer.style.filter;
+            snapCtx.drawImage(videoPlayer, 0, 0);
+            
+            const a = document.createElement('a');
+            a.download = 'video-frame-snapshot.png';
+            a.href = snapCanvas.toDataURL();
+            a.click();
+        });
+
+        /* ============================================================
+           8. UTILITIES & EVENT LISTENERS
+           ============================================================ */
+        function appendChat(sender, text) {
+            const transcript = document.getElementById('transcript');
+            if (!transcript) return;
+            const p = document.createElement('p');
+            p.innerHTML = `<b>${sender}</b>: <span>${text}</span>`;
+            transcript.appendChild(p);
+            transcript.scrollTop = transcript.scrollHeight;
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            // Auto Weather Fetch on Load
+            autoDetectAndFetchWeather();
+
+            // Live clock
+            setInterval(() => {
+                const now = new Date();
+                document.getElementById('clock-time').innerText = now.toLocaleTimeString();
+                document.getElementById('clock-date').innerText = now.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase();
+            }, 1000);
+
+            // Tab Switcher
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.addEventListener('click', (e) => {
+                    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    e.target.classList.add('active');
+                    document.getElementById(e.target.dataset.tab).classList.add('active');
+                });
+            });
+
+            // Software launcher button listeners
+            document.querySelectorAll('button[data-app]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    launchSoftware(btn.dataset.app);
+                });
+            });
+
+            // Home automation appliance button listeners
+            document.querySelectorAll('.appliance-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const device = e.target.dataset.device;
+                    const action = e.target.dataset.action === 'on';
+                    setDeviceState(device, action);
+                });
+            });
+
+            // Weather search triggers (Button + Enter Key)
+            const handleCitySearch = () => {
+                const input = document.getElementById('city-input');
+                if (input && input.value.trim()) {
+                    fetchWeather(input.value.trim(), true);
+                }
+            };
+
+            document.getElementById('search-city-btn')?.addEventListener('click', handleCitySearch);
+            document.getElementById('city-input')?.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') handleCitySearch();
+            });
+
+            document.getElementById('refresh-weather')?.addEventListener('click', () => {
+                const input = document.getElementById('city-input');
+                if (input && input.value.trim()) {
+                    fetchWeather(input.value.trim(), true);
+                } else {
+                    autoDetectAndFetchWeather();
+                }
+            });
+
+            // Chat & command submission
+            document.getElementById('prompt-form')?.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const input = document.getElementById('prompt');
+                if (input.value.trim()) {
+                    processQuestionOrCommand(input.value.trim());
+                    input.value = '';
+                }
+            });
+
+            // Speech Recognition
+            const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (SpeechRec) {
+                const rec = new SpeechRec();
+                rec.lang = 'en-US';
+                rec.onstart = () => { document.getElementById('mic-status').innerText = "LISTENING..."; };
+                rec.onresult = (e) => { processQuestionOrCommand(e.results[0][0].transcript); };
+                rec.onend = () => { document.getElementById('mic-status').innerText = "READY"; };
+
+                document.getElementById('listen')?.addEventListener('click', () => rec.start());
+                window.addEventListener('keydown', (e) => {
+                    if (e.code === 'Space' && document.activeElement.tagName !== 'INPUT') {
+                        e.preventDefault();
+                        rec.start();
+                    }
+                });
+            }
+
+            document.getElementById('sound-toggle')?.addEventListener('click', (e) => {
+                AudioFX.enabled = !AudioFX.enabled;
+                e.target.innerText = AudioFX.enabled ? "🔊 FX ON" : "🔇 FX OFF";
+            });
+        });
+    </script>
+</body>
+</html>
